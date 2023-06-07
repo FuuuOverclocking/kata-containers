@@ -324,7 +324,7 @@ impl AddressSpaceMgr {
             let _key = res_mgr
                 .allocate_mem_address(&constraint)
                 .ok_or(AddressManagerError::NoAvailableMemAddress)?;
-            let mmap_reg = self.create_mmap_region(reg.clone())?;
+            let mmap_reg = self.create_mmap_region(reg)?;
 
             vm_memory = vm_memory
                 .insert_region(mmap_reg.clone())
@@ -434,7 +434,7 @@ impl AddressSpaceMgr {
     /// Mmap the address space region into current process.
     pub fn create_mmap_region(
         &mut self,
-        region: Arc<AddressSpaceRegion>,
+        region: &AddressSpaceRegion,
     ) -> Result<Arc<GuestRegionImpl>> {
         // Special check for 32bit host with 64bit virtual machines.
         if region.len() > usize::MAX as u64 {
@@ -485,7 +485,7 @@ impl AddressSpaceMgr {
             self.configure_numa(&mmap_reg, node_id)?;
         }
         if region.is_hugepage() {
-            self.configure_thp_and_prealloc(&region, &mmap_reg)?;
+            self.configure_thp_and_prealloc(region, &mmap_reg)?;
         }
 
         let reg = GuestRegionImpl::new(mmap_reg, region.start_addr())
@@ -533,7 +533,7 @@ impl AddressSpaceMgr {
     // The reason why we don't use mmap to enable THP and pre-alloction is that THP setting won't take effect in this operation (tested in kernel 4.9)
     fn configure_thp_and_prealloc(
         &mut self,
-        region: &Arc<AddressSpaceRegion>,
+        region: &AddressSpaceRegion,
         mmap_reg: &MmapRegion,
     ) -> Result<()> {
         debug!(
